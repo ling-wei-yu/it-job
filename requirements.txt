@@ -6,4 +6,3 @@ seaborn
 jieba
 wordcloud
  pydeck
- os
