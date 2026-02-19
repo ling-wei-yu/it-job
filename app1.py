@@ -13,7 +13,6 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import pydeck as pdk
 
-
 # ======================================================================
 #   (A) 页面基础设置、全局常量、核心函数定义
 # ======================================================================
@@ -63,7 +62,7 @@ def prepare_experience_data(_df, mode='overall'):
 
         bachelor_df_no_na = bachelor_df.dropna(subset=['经验等级'])
         source_df = bachelor_df_no_na.groupby('经验等级').apply(remove_outliers).reset_index(drop=True)
-    else:
+    else:  # 默认为 'overall'
         source_df = _df.copy()
 
     analysis_df = source_df[source_df['城市等级'].isin(['一线城市', '新一线城市'])]
@@ -83,9 +82,10 @@ def prepare_experience_data(_df, mode='overall'):
 
     return mean_df, median_df
 
-# 学历准备数据
+
 @st.cache_data
 def prepare_education_data(_df):
+    """准备“学历价值分析”所需的数据。"""
     edu_to_analyze = ['中专/中技', '高中', '大专', '本科', '硕士', '博士']
     analysis_df = _df[_df['学历'].isin(edu_to_analyze)]
     edu_salary_median = analysis_df.groupby('学历')['月薪'].median().round(0).reset_index()
@@ -94,9 +94,10 @@ def prepare_education_data(_df):
     edu_salary_median = edu_salary_median.sort_values(by='学历')
     return edu_salary_median
 
-# 热门与高薪准备数据
+
 @st.cache_data
 def prepare_category_data(_df):
+    """准备“岗位类别分析”所需的数据。"""
     hot_jobs = _df.groupby('检索二级职位类别').size().reset_index(name='岗位数量')
     top_15_hot = hot_jobs.sort_values(by='岗位数量', ascending=False).head(15)
     high_salary_jobs = _df.groupby('检索二级职位类别')['月薪'].agg(['median', 'size']).reset_index()
@@ -107,6 +108,8 @@ def prepare_category_data(_df):
 
 
 def prepare_company_data(_df):
+    # 准备“企业画像分析”所需的数据。
+
     # --- 公司规模分析 ---
     size_analysis = _df.groupby('公司规模标签')['月薪'].agg(['median', 'size']).round(0)
     size_analysis.columns = ['中位数月薪', '岗位数量']
@@ -124,10 +127,12 @@ def prepare_company_data(_df):
 
     return size_analysis, type_analysis
 
-# 词云准备数据
+
 @st.cache_data
 def generate_wordcloud_image(_df, column_name,cache_key=None):
-
+    """
+    为传入的DataFrame的指定列，动态生成技能或福利词云图。
+    """
     text = " ".join(item for item in _df[column_name].dropna())
     if not text.strip():
         return None
@@ -174,14 +179,12 @@ def load_data_from_url(url):
         # 如果出错，显示错误信息
         st.error(f"从URL加载或解压数据时发生错误: {e}")
         return None
-
-
 # ======================================================================
 #   (B) UI与主逻辑
 # ======================================================================
 
 st.title("📊 IT行业招聘数据可视化分析系统")
-# 定义从GitHub的原始数据文件URL 
+# 定义从GitHub获取的原始数据文件URL (Raw URL)
 
 DATA_URL = "https://github.com/ling-wei-yu/it-job/releases/download/V1.0/it_data_cleaned_v6_final.zip"
 
@@ -213,7 +216,7 @@ st.sidebar.info("组合使用筛选器，所有图表都将实时更新。")
 st.write("---")
 
 # ======================================================================
-#   (D) “双模态”智能渲染逻辑
+#   (C) “双模态”智能渲染逻辑
 # ======================================================================
 st.write("---")
 
@@ -225,7 +228,7 @@ if is_filtered:
 else:
     df_display = df
 
-# --- 2. "无数据"处理方式 ---
+# --- 2. "无数据"的防御性检查 ---
 if df_display.empty:
     st.warning("在此筛选条件下，没有找到足够的数据用于分析。请尝试放宽筛选条件。")
 
@@ -328,10 +331,11 @@ elif not is_filtered:
     with col3:
         st.subheader("热门岗位 TOP 15 (按需求量)")
 
+        # 使用“链式调用”，完成所有配置
         fig_hot = (px.bar(
             hot_data, x='岗位数量', y='检索二级职位类别', text='岗位数量',
             orientation='h', template='plotly_white', title='IT行业热门岗位 TOP 15',
-            labels={'检索二级职位类别': '职位类别'}
+            labels={'检索二级职位类别': '职位类别'}  # 重命名Tooltip
         ).update_layout(
             title_x=0.5, xaxis_title='岗位数量 (个)', yaxis_title=None,
             yaxis={'categoryorder': 'total ascending'},
@@ -344,7 +348,7 @@ elif not is_filtered:
     with col4:
         st.subheader("高薪岗位 TOP 15 (按中位数月薪)")
 
-
+        # 使用“链式调用”
         fig_high = (px.bar(
             high_salary_data, x='中位数月薪', y='检索二级职位类别', text='中位数月薪',
             orientation='h', template='plotly_white', title='IT行业高薪岗位 TOP 15',
@@ -373,8 +377,6 @@ elif not is_filtered:
 
     #模块四企业画像分析
     st.header("4. 企业画像分析：规模与性质的对比")
-
-
     size_data, type_data = prepare_company_data(df_filtered)
 
     col5, col6 = st.columns(2)
@@ -393,7 +395,7 @@ elif not is_filtered:
         st.subheader("不同公司性质的薪酬对比")
         fig_type = px.bar(type_data, x=type_data.index, y='中位数月薪', text='中位数月薪',
                           title='公司性质 vs. 薪酬中位数')
-        # 增加左边距(l=120)，为Y轴标签留出足够空间
+        # 核心修正：增加左边距(l=120)，为Y轴标签留出足够空间
         fig_type.update_layout(title_x=0.5, xaxis_title=None, margin=dict(l=120))
         fig_type.update_traces(texttemplate='%{y:,.0f} 元', textposition='outside')
         # 为Y轴范围增加一些顶部空间
@@ -431,6 +433,7 @@ else:
     # --- 下钻分析一：该群体的热门岗位 ---
     st.header("1. 该群体的热门岗位类别")
     hot_data, _ = prepare_category_data(df_display)
+    # 用“链式调用”，将所有配置写在一起
     fig_hot_drill = (px.bar(
         hot_data, x='岗位数量', y='检索二级职位类别', text='岗位数量',
         orientation='h', template='plotly_white', title='该群体热门岗位 TOP 15',
@@ -450,7 +453,7 @@ else:
     col_hist, col_box = st.columns(2)
     with col_hist:
         st.subheader("薪资分布直方图")
-        fig_hist_drill = px.histogram(df_display, x="月薪", nbins=50)
+        fig_hist_drill = px.histogram(df_display, x="月薪",title="薪资分布", nbins=50)
         fig_hist_drill.update_layout(title_x=0.5)
         st.plotly_chart(fig_hist_drill, use_container_width=True)
     with col_box:
@@ -480,7 +483,7 @@ else:
 
         # 2. 根据城市数量，决定地图的中心点和缩放等级
         if num_selected_cities > 1:
-            # 如果选择了多个城市，我们就用一个能看全中国的宏观视角
+            # 如果选择了多个城市，使用全中国的宏观视角
             initial_view_state_drill = pdk.ViewState(
                 latitude=36,
                 longitude=104,
@@ -488,7 +491,7 @@ else:
                 pitch=45
             )
         else:
-            # 如果只选择了一个城市，我们就聚焦于该城市的中心
+            # 如果只选择了一个城市就聚焦于该城市的中心
             initial_view_state_drill = pdk.ViewState(
                 latitude=map_data_drill['lat'].mean(),
                 longitude=map_data_drill['lon'].mean(),
@@ -506,57 +509,121 @@ else:
     st.write("---")
 
     # --- 下钻分析四：技能与福利画像 ---
-    st.header("4. 该群体的技能与福利画像")
+    st.header("3. 岗位画像词云 (可二次下钻)")
+    st.markdown("> **说明:** 您可以先选择一个**岗位角色**，再进一步选择一个**核心技术**，进行精准画像。")
 
-    # 1. 从已经筛选过的 df_display 中，找出可供选择的“职位类别”
-    category_counts = df_display['检索二级职位类别'].value_counts()
-    # 为了避免下拉菜单过长，并且保证统计意义，只选择岗位数大于1的类别
-    meaningful_categories = category_counts[category_counts > 1].index.tolist()
+    # 定义两个独立的选项字典
+    ROLE_OPTIONS = {
+        "👉 查看筛选群体的整体画像": None,  # 默认/重置选项
+        "后端开发": "后端|Java|Python|Go|PHP|C++",
+        "前端开发": "前端|Vue|React|Web",
+        "人工智能": "算法|AI|机器学习|深度学习|NLP",
+        "数据分析": "数据分析|BI|数据挖掘",
+        "测试开发": "测试|测开|QA",
+    }
 
-    # 2. 如果筛选后，没有任何一个类别可选，则显示提示
-    if not meaningful_categories:
-        st.warning("当前筛选条件下，没有足量的、可供进一步生成词云的岗位类别。")
-    else:
-        # 3. 创建一个下拉菜单，让用户在“已筛选的群体”中，再做一次“岗位”选择
-        selected_category = st.selectbox(
-            '请在当前群体中，选择一个具体职位类别来生成画像：',
-            options=sorted(meaningful_categories)
+    # 字典二：选择“技术/语言”
+    TECH_OPTIONS = {
+        "👉 不限特定技术": None,  # 默认/重置选项
+        "Java": "Java(?!Script)",  # 使用负向先行断言，确保不匹配JavaScript
+        "Python": "Python",
+        "C++": "C\+\+",  # C++的'+'需要转义
+        "Go": "Go语言|Golang",
+        "C#": "C#",
+        "React": "React",
+        "Vue": "Vue"
+    }
+
+    # 创建两个独立的下拉选择器
+    col_role, col_tech = st.columns(2)
+    with col_role:
+        selected_role = st.selectbox(
+            label="第一步：请选择一个岗位角色",
+            options=list(ROLE_OPTIONS.keys()),
+        )
+    with col_tech:
+        selected_tech = st.selectbox(
+            label="第二步：请选择一个核心技术 (可选)",
+            options=list(TECH_OPTIONS.keys()),
         )
 
-        # 4. 只有当用户明确选择了一个类别后，才执行后续操作
-        if selected_category:
-            # a. 从 df_display 中，再进一步筛选出用户选择的这一个最终类别
-            category_df = df_display[df_display['检索二级职位类别'] == selected_category]
-            st.caption(f"正在为【{selected_category}】类别的 **{len(category_df)}** 个岗位进行画像...")
+    # 双层过滤
+    df_for_wordcloud = df_display.copy()
+    title_profile = "整体"
+    title_parts = []
 
-            # b. 为这个最精确的群体，生成词云
-            col_skill, col_benefit = st.columns(2)
-            with col_skill:
-                st.subheader(f"核心技能词云")
-                with st.spinner("生成中..."):
-                    # 调用全局的词云生成函数
-                    skill_image_fig = generate_wordcloud_image(category_df, '岗位描述',cache_key=selected_category)
-                    if skill_image_fig:
-                        st.pyplot(skill_image_fig, use_container_width=True)
-                    else:
-                        st.warning("该类别的岗位描述信息不足，无法生成技能词云。")
-            with col_benefit:
-                st.subheader(f"主要福利词云")
-                with st.spinner("生成中..."):
-                    benefit_image_fig = generate_wordcloud_image(category_df, '岗位福利待遇',cache_key=f"benefit_{selected_category}")
-                    if benefit_image_fig:
-                        st.pyplot(benefit_image_fig, use_container_width=True)
-                    else:
-                        st.warning("该类别下的岗位未提供明确福利信息。")
+    # 第一层过滤：按角色筛选
+    if selected_role != "👉 查看筛选群体的整体画像":
+        search_keywords_role = ROLE_OPTIONS[selected_role]
+        df_for_wordcloud = df_for_wordcloud[
+            df_for_wordcloud['岗位名'].str.contains(search_keywords_role, case=False, na=False)
+        ]
+        title_parts.append(selected_role)
+
+    # 第二层过滤：在第一层的基础上，再按技术筛选
+    if selected_tech != "👉 不限特定技术":
+        search_keywords_tech = TECH_OPTIONS[selected_tech]
+        # 在'岗位名'和'岗位描述'两列中同时搜索，更准确！
+        df_for_wordcloud = df_for_wordcloud[
+            df_for_wordcloud['岗位名'].str.contains(search_keywords_tech, case=False, na=False) |
+            df_for_wordcloud['岗位描述'].str.contains(search_keywords_tech, case=False, na=False)
+            ]
+        title_parts.append(selected_tech)
+
+    # 动态生成最终标题
+    if title_parts:
+        title_profile = " & ".join(title_parts)
+
+    col_skill, col_benefit = st.columns(2)
 
 
+    def generate_wordcloud(text_series):
+        text = ' '.join(text_series.dropna())
+        if text:
+            try:
+                wc = WordCloud(font_path='simhei.ttf',
+                               background_color='white', width=800, height=600,
+                               colormap='viridis', prefer_horizontal=0.9).generate(text)
+                return wc
+            except Exception:
+                return None
+        return None
 
+
+    if df_for_wordcloud.empty:
+        st.warning(f"在当前筛选条件下，没有找到与“{title_profile}”相关的岗位。")
+    else:
+        with col_skill:
+            st.subheader(f"{title_profile} - 核心技术画像")
+            st.markdown("> (数据源: '岗位描述'列)")
+            skill_wc = generate_wordcloud(df_for_wordcloud['岗位描述'])
+            if skill_wc:
+                fig1, ax1 = plt.subplots()
+                ax1.imshow(skill_wc, interpolation='bilinear')
+                ax1.axis('off')
+                st.pyplot(fig1)
+            else:
+                st.warning("无足够数据生成核心技术词云。")
+
+        with col_benefit:
+            st.subheader(f"{title_profile} - 福利待遇画像")
+            st.markdown("> (数据源: '岗位福利待遇'列)")
+            benefit_wc = generate_wordcloud(df_for_wordcloud['岗位福利待遇'])
+            if benefit_wc:
+                fig2, ax2 = plt.subplots()
+                ax2.imshow(benefit_wc, interpolation='bilinear')
+                ax2.axis('off')
+                st.pyplot(fig2)
+            else:
+                st.warning("无足够数据生成福利待遇词云。")
+
+
+    st.write("---")
 
     # --- 下钻分析五：数据详情浏览器 ---
     st.header("5. 数据详情浏览器")
     with st.expander("点击展开/折叠，查看当前筛选条件下的具体岗位数据 👇"):
         st.dataframe(df_display[['岗位名', '公司名称', '月薪', '学历', '经验标签', '检索城市', '岗位福利待遇']])
-
 
 
 
