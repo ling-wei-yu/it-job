@@ -132,7 +132,7 @@ def prepare_company_data(_df):
 
 # 词云模块准备数据
 @st.cache_data
-def generate_wordcloud_image(_df, column_name, use_stopwords=False, cache_key="default"):
+def generate_wordcloud_image(_df, column_name, use_stopwords=False,cache_key=None ):
     if column_name not in _df.columns: return None
     text = " ".join(item for item in _df[column_name].dropna())
     if not text.strip(): return None
@@ -601,5 +601,6 @@ else:
     st.header("5. 数据详情浏览器")
     with st.expander("点击展开/折叠，查看当前筛选条件下的具体岗位数据 👇"):
         st.dataframe(df_display[['岗位名', '公司名称', '月薪', '学历', '经验标签', '检索城市', '岗位福利待遇']])
+
 
 
