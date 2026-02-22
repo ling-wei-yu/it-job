@@ -139,9 +139,11 @@ def generate_wordcloud_image(_df, column_name,cache_key=None):
 
     word_list = jieba.cut(text)
 
-    # 定义一个更全面的停用词列表
-    stopwords = {'的', '了', '和', '是', '等', '及', '与', '或', '工作', '负责', '要求', '具备', '能力', '以及', '相关',
-                 '优先', '以上', '经验', '熟悉', '熟练', '掌握', '项目', '团队', '公司', '技术'}
+    # 定义一个比较全面的停用词列表
+    stopwords = {'岗位职责', '任职', '要求', '负责', '能力', '工作', '优先', '以及', '相关', '具备', '以上', '经验', '团队',
+    '公司', '项目', '进行', '参与', '熟悉', '使用', '良好', '技术', '能够', '开发', '研究', '构建', '设计',
+    '沟通', '熟练', '至少', '一种', '以上学历', '本科', '硕士', '学历', '计算机', '专业', '描述', '完成',
+    '根据', '制定', '相关工作', '职责', '职位', '包括', '保证', '解决', '问题', '分析', '了解'}
     filtered_words = [word for word in word_list if len(word) > 1 and word not in stopwords]
 
     if not filtered_words:
@@ -149,7 +151,7 @@ def generate_wordcloud_image(_df, column_name,cache_key=None):
 
     font_path = 'simhei.ttf'
     if not os.path.exists(font_path):
-        st.error(f"错误: 未找到中文字体 '{font_path}'。请下载该文件并放置在与app.py相同的目录下。")
+        st.error(f"错误: 未找到中文字体 '{font_path}'。")
         return None
 
     wordcloud = WordCloud(
