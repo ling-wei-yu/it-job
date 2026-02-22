@@ -44,7 +44,7 @@ def load_data(file_path):
 
 
 @st.cache_data
-def prepare_experience_data(_df, mode='overall'):
+def prepare_experience_data(_df, mode='overall',cache_key=None):
     """
     一个通用的函数，用于准备“经验回报率”分析所需的数据。
     通过 mode 参数，可以为不同群体（总体、本科、核心本科）生成数据。
@@ -86,7 +86,7 @@ def prepare_experience_data(_df, mode='overall'):
 
 
 @st.cache_data
-def prepare_education_data(_df):
+def prepare_education_data(_df,cache_key=None):
     """准备“学历价值分析”所需的数据。"""
     edu_to_analyze = ['中专/中技', '高中', '大专', '本科', '硕士', '博士']
     analysis_df = _df[_df['学历'].isin(edu_to_analyze)]
@@ -98,7 +98,7 @@ def prepare_education_data(_df):
 
 
 @st.cache_data
-def prepare_category_data(_df):
+def prepare_category_data(_df,cache_key=None):
     """准备“岗位类别分析”所需的数据。"""
     hot_jobs = _df.groupby('检索二级职位类别').size().reset_index(name='岗位数量')
     top_15_hot = hot_jobs.sort_values(by='岗位数量', ascending=False).head(15)
@@ -433,7 +433,7 @@ else:
 
     # --- 下钻分析一：该群体的热门岗位 ---
     st.header("1. 该群体的热门岗位类别")
-    hot_data, _ = prepare_category_data(df_display)
+    hot_data, _ = prepare_category_data(df_display,cache_key=len(df_display))
     # 用“链式调用”，将所有配置写在一起
     fig_hot_drill = (px.bar(
         hot_data, x='岗位数量', y='检索二级职位类别', text='岗位数量',
@@ -601,4 +601,5 @@ else:
     st.header("5. 数据详情浏览器")
     with st.expander("点击展开/折叠，查看当前筛选条件下的具体岗位数据 👇"):
         st.dataframe(df_display[['岗位名', '公司名称', '月薪', '学历', '经验标签', '检索城市', '岗位福利待遇']])
+
 
