@@ -571,11 +571,14 @@ else:
         with col_skill:
             st.subheader(f"{title_profile} - 核心技术画像")
             # 调用函数时，把动态生成的 title_profile 作为 cache_key 传进去
+            
+            skill_cache_key = f"skill_{title_profile}_{len(df_for_wordcloud)}"
+            
             fig_skill = generate_wordcloud_image(
                 df_for_wordcloud,
                 '岗位描述',
                 use_stopwords=True,
-                cache_key=f"skill_{title_profile}"  # 例如 "skill_后端开发 & Java"
+                cache_key=skill_cache_key  # 例如 "skill_后端开发 & Java"
             )
             if fig_skill:
                 st.pyplot(fig_skill)
@@ -584,11 +587,14 @@ else:
 
         with col_benefit:
             st.subheader(f"{title_profile} - 福利待遇画像")
+            
+            benefit_cache_key = f"benefit_{title_profile}_{len(df_for_wordcloud)}"
+            
             fig_benefit = generate_wordcloud_image(
                 df_for_wordcloud,
                 '岗位福利待遇',
                 use_stopwords=False,
-                cache_key=f"benefit_{title_profile}"
+                cache_key=benefit_cache_key
             )
             if fig_benefit:
                 st.pyplot(fig_benefit)
@@ -601,6 +607,7 @@ else:
     st.header("5. 数据详情浏览器")
     with st.expander("点击展开/折叠，查看当前筛选条件下的具体岗位数据 👇"):
         st.dataframe(df_display[['岗位名', '公司名称', '月薪', '学历', '经验标签', '检索城市', '岗位福利待遇']])
+
 
 
 
