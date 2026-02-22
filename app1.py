@@ -120,7 +120,7 @@ def prepare_company_data(_df):
     # 所以 sort_index() 会自动按照期望的顺序（从小到大）进行排序。
     size_analysis = size_analysis.sort_index()
 
-    #公司类型分析
+    # 公司类型分析
     type_analysis = _df.groupby('公司类型标签')['月薪'].agg(['median', 'size']).round(0)
     type_analysis.columns = ['中位数月薪', '岗位数量']
     # 为了图表美观，过滤掉样本量过小和“不详”的类别
@@ -162,6 +162,7 @@ def generate_wordcloud_image(_df, column_name, use_stopwords=False, cache_key="d
     ax.axis("off")
     return fig
 
+
 # github上传数据
 @st.cache_data
 def load_data_from_url(url):
@@ -179,6 +180,7 @@ def load_data_from_url(url):
     except Exception as e:
         st.error(f"从URL加载数据时出错: {e}")
         return None
+
 
 # ======================================================================
 #   (B) UI与主逻辑
@@ -509,96 +511,8 @@ else:
     # --- 下钻分析四：技能与福利画像 ---
     st.header("4. 岗位画像词云 (可二次下钻)")
     st.markdown("> **说明:** 您可以先选择一个**岗位角色**，再进一步选择一个**核心技术**，进行精准画像。")
-# 定义两个独立的选项字典
-ROLE_OPTIONS = {
-    "👉 查看筛选群体的整体画像": None,
-    "后端开发": "后端|Java|Python|Go|PHP|C++",
-    "前端开发": "前端|Vue|React|Web",
-    "人工智能": "算法|AI|机器学习|深度学习|NLP",
-    "数据分析": "数据分析|BI|数据挖掘",
-    "测试开发": "测试|测开|QA",
-}
-TECH_OPTIONS = {
-    "👉 不限特定技术": None,
-    "Java": "Java(?!Script)",
-    "Python": "Python",
-    "C++": "C\+\+",
-    "Go": "Go语言|Golang",
-}
-
-# 创建两个独立的下拉选择器
-col_role, col_tech = st.columns(2)
-with col_role:
-    selected_role = st.selectbox(
-        label="第一步：请选择一个岗位角色",
-        options=list(ROLE_OPTIONS.keys()),
-        key='drilldown_role_select'  # 添加一个唯一的key，防止与全局冲突
-    )
-with col_tech:
-    selected_tech = st.selectbox(
-        label="第二步：请选择一个核心技术 (可选)",
-        options=list(TECH_OPTIONS.keys()),
-        key='drilldown_tech_select'  # 添加一个唯一的key
-    )
-
-# 双层过滤
-df_for_wordcloud = df_display.copy()
-title_profile = "整体"
-title_parts = []
-
-if selected_role and ROLE_OPTIONS[selected_role]:
-    df_for_wordcloud = df_for_wordcloud[
-        df_for_wordcloud['岗位名'].str.contains(ROLE_OPTIONS[selected_role], case=False, na=False)
-    ]
-    title_parts.append(selected_role)
-
-if selected_tech and TECH_OPTIONS[selected_tech]:
-    search_tech = TECH_OPTIONS[selected_tech]
-    df_for_wordcloud = df_for_wordcloud[
-        df_for_wordcloud['岗位名'].str.contains(search_tech, case=False, na=False) |
-        df_for_wordcloud['岗位描述'].str.contains(search_tech, case=False, na=False)
-        ]
-    title_parts.append(selected_tech)
-
-if title_parts:
-    title_profile = " & ".join(title_parts)
-if df_for_wordcloud.empty:
-    st.warning(f"在当前筛选条件下，没有找到与“{title_profile}”相关的岗位。")
-else:
-    col_skill, col_benefit = st.columns(2)
-    with col_skill:
-        st.subheader(f"{title_profile} - 核心技术画像")
-        # 调用函数时，把动态生成的 title_profile 作为 cache_key 传进去
-        fig_skill = generate_wordcloud_image(
-            df_for_wordcloud,
-            '岗位描述',
-            use_stopwords=True,
-            cache_key=f"skill_{title_profile}"  # 例如 "skill_后端开发 & Java"
-        )
-        if fig_skill:
-            st.pyplot(fig_skill)
-        else:
-            st.warning("无足够数据生成核心技术词云。")
-
-    with col_benefit:
-        st.subheader(f"{title_profile} - 福利待遇画像")
-        fig_benefit = generate_wordcloud_image(
-            df_for_wordcloud,
-            '岗位福利待遇',
-            use_stopwords=False,
-            cache_key=f"benefit_{title_profile}"
-        )
-        if fig_benefit:
-            st.pyplot(fig_benefit)
-        else:
-            st.warning("无足够数据生成福利待遇词云。")
-st.write("---")
-
-
 
 # --- 下钻分析五：数据详情浏览器 ---
 st.header("5. 数据详情浏览器")
 with st.expander("点击展开/折叠，查看当前筛选条件下的具体岗位数据 👇"):
     st.dataframe(df_display[['岗位名', '公司名称', '月薪', '学历', '经验标签', '检索城市', '岗位福利待遇']])
-
-
